@@ -16,6 +16,170 @@ const map = new mapboxgl.Map({
     zoom: 12 // starting zoom level
 });
 
+// Empty variables and fetching data.
+let collisions;
+let bBoxGeoJson;
+let bboxCoords;
+fetch('https://raw.githubusercontent.com/altaylor37/ggr472-lab4/main/data/pedcyc_collision_06-21.geojson')
+    .then(response => response.json())
+    .then(response => {
+        console.log(response);
+        collisions = response;
+    });
+
+
+
+    let popup = new mapboxgl.Popup({
+        closeButton: false,
+        closeOnClick: false
+    });
+    
+// Map load event to add collisions layer and style it.
+map.on('load', function() {
+    map.addSource('collisions', {
+        type: 'geojson',
+        data: collisions
+    })
+    map.addLayer({
+        id: 'collPedCyc',
+        type: 'circle',
+        source: 'collisions',
+        paint: {
+            'circle-radius': 5,
+            'circle-color': '#ff0000'
+        }
+    });
+
+//Envelope & create a bounding box for the collisions point file. Creating, loading, and styling.
+    let interEnvCollisions = turf.envelope(collisions);
+
+    bBoxGeoJson = {
+        "type": "FeatureCollection",
+        "features": [interEnvCollisions]
+    }
+    // map.addSource('envelopedCollisions', {
+    //     type: "geojson",
+    //     data: bBoxGeoJson
+    // })
+    // map.addLayer({
+    //     id: "collEnv",
+    //     type: "fill",
+    //     source: "envelopedCollisions",
+    //     paint: {
+    //         'fill-color': "grey",
+    //         'fill-opacity': 0.5,
+    //         'fill-outline-color': "black"
+    //     }
+    // });
+
+    console.log(bBoxGeoJson)
+    console.log(bBoxGeoJson.features[0].geometry.coordinates);
+
+    // console.log(bbox)
+    // console.log(bbox.geometry.coordinates)
+
+    let bBoxCoords = [bBoxGeoJson.features[0].geometry.coordinates[0][0],
+                bBoxGeoJson.features[0].geometry.coordinates[0][1],
+                bBoxGeoJson.features[0].geometry.coordinates[0][2],
+                bBoxGeoJson.features[0].geometry.coordinates[0][3]];
+
+    console.log(bBoxCoords);
+
+    //Specify variables as Lon/Lat or min x/y values within the array. I have no idea why it was not working without this but I found this as an alternative on StackOverflow. 
+    let minLon = bBoxCoords[0][0];
+    let minLat = bBoxCoords[0][1];
+    let maxLon = bBoxCoords[2][0];
+    let maxLat = bBoxCoords[2][1];
+    let bbox = [minLon, minLat, maxLon, maxLat];
+
+    //Expand bbox by 10% to fit all points.
+    let scaledBox = turf.bbox(turf.transformScale((turf.bboxPolygon(bbox)), 1.1));
+
+    //Create, Add, and Style the hexgrid. 
+    let hexGrid = turf.hexGrid(scaledBox, 0.5, {units: 'kilometers'});
+    // map.addSource('hexGrid', {
+    //     type: 'geojson',
+    //     data: hexGrid
+    // });
+    // map.addLayer({
+    //     id: 'hexGridLayer',
+    //     type: 'fill',
+    //     source: 'hexGrid',
+    //     paint: {
+    //         'fill-color': '#ffffff',
+    //         'fill-opacity': 0.5
+    //     }
+    // });
+
+    let collHex = turf.collect(hexGrid, collisions, '_id', 'values');
+    console.log(collHex);
+
+    let maxColl = 0;
+
+    collHex.features.forEach((feature) => {
+        feature.properties.COUNT = feature.properties.values.length
+        if (feature.properties.COUNT > maxColl) {
+            // console.log(feature);
+            maxColl = feature.properties.COUNT
+        }
+    });
+    console.log(maxColl);
+
+
+
+    map.addSource('CollHex', {
+        type: 'geojson',
+        data: collHex
+    });
+    map.addLayer({
+        id: 'CollHexCloro',
+        type: 'fill',
+        source: 'CollHex',
+        paint: {
+            'fill-color': [
+                'interpolate',
+                ['linear'],
+                ['get', 'COUNT'],
+                0, '#ffffcc',
+                27, '#a1dab4',
+                54, '#41b6c4',
+            ],
+        'fill-opacity': 0.755 
+        }
+    });
+});
+
+// Display the pop-up on hover
+map.on('mousemove', 'CollHexCloro', function(e) {
+    // Check that the feature exists
+    if (e.features.length > 0) {
+        var feature = e.features[0];
+
+        // Ensure there is a COUNT property
+        if (feature.properties.COUNT !== undefined) {
+            // Set the pop-up content and location
+            popup.setLngLat(e.lngLat)
+                 .setHTML(`<strong>Collisions: </strong> ${feature.properties.COUNT}`)
+                 .addTo(map);
+
+            // Optional: Change the cursor style as a UI indicator
+            map.getCanvas().style.cursor = 'pointer';
+        }
+    }
+});
+
+// Hide the pop-up when the mouse leaves the hexagon layer
+map.on('mouseleave', 'CollHexCloro', function() {
+    map.getCanvas().style.cursor = '';
+    popup.remove();
+});
+
+document.getElementById('opacity-slider').addEventListener('input', function(e) {
+    let layerOpacity = e.target.value;
+    map.setPaintProperty('CollHexCloro', 'fill-opacity', parseFloat(layerOpacity));
+});
+
+
 
 
 /*--------------------------------------------------------------------
