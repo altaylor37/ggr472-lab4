@@ -1,10 +1,3 @@
-/*--------------------------------------------------------------------
-GGR472 LAB 4: Incorporating GIS Analysis into web maps using Turf.js 
---------------------------------------------------------------------*/
-
-/*--------------------------------------------------------------------
-Step 1: INITIALIZE MAP
---------------------------------------------------------------------*/
 // Define access token
 mapboxgl.accessToken = 'pk.eyJ1IjoiYWx0YXlsb3IzNyIsImEiOiJjbHMyOWRoY2wwMWllMmtxam1yZjE3ams4In0.qdGA5yoWQbVEgPX3Tlru5A'; //****ADD YOUR PUBLIC ACCESS TOKEN*****
 
@@ -15,6 +8,10 @@ const map = new mapboxgl.Map({
     center: [-79.39, 43.65],  // starting point, longitude/latitude
     zoom: 12 // starting zoom level
 });
+
+//Map controls
+map.addControl(new mapboxgl.FullscreenControl());
+map.addControl(new mapboxgl.NavigationControl());
 
 // Empty variables and fetching data.
 let collisions;
@@ -49,10 +46,6 @@ fetch('https://raw.githubusercontent.com/altaylor37/ggr472-lab4/main/TorontoBoun
         closeOnClick: false
     });
 
-//Map controls
-map.addControl(new mapboxgl.FullscreenControl());
-map.addControl(new mapboxgl.NavigationControl());
-    
 // Map load event to add collisions layer and style it.
 map.on('load', function() {
     map.addSource('collisions', {
@@ -64,8 +57,14 @@ map.on('load', function() {
         type: 'circle',
         source: 'collisions',
         paint: {
-            'circle-radius': 5,
-            'circle-color': '#ff0000'
+            'circle-radius': [
+                "interpolate",
+                ["linear"],
+                ["zoom"],
+                10, 1,
+                15, 7
+            ],
+            'circle-color': 'black'
         }
     });
 
@@ -79,36 +78,39 @@ map.on('load', function() {
         source: 'torontoBoundary',
         paint: {
             'line-color': 'black',
-            'line-width': 5,
+            'line-width': [
+                "interpolate",
+                ["linear"],
+                ["zoom"],
+                10, 1,
+                15, 7
+            ],
         }
     });
+
+    console.log('Collisions GeoJSON Type:', collisions.type); // Should be FeatureCollection
+    console.log('First Feature Geometry Type:', collisions.features[0].geometry.type); // Typically Point, LineString, etc.
+
 //Envelope & create a bounding box for the collisions point file. Creating, loading, and styling.
+// I was using this section to troubleshoot and when I went to delete the console logs and the if statement the hexagons no longer appeared. 
     let interEnvCollisions = turf.envelope(collisions);
+    console.log('Envelope Type:', interEnvCollisions.geometry.type); // Should be Polygon
+    console.log('Envelope Coordinates:', interEnvCollisions.geometry.coordinates);
+    if (boundsTOPoly.type === 'FeatureCollection') {
+        boundsTOPoly = boundsTOPoly.features[0]; // Assuming the first feature is the desired boundary
+    }
+    console.log('Toronto Boundary Type:', boundsTOPoly.geometry.type); // Should be Polygon or MultiPolygon
+    let intersectionResult = turf.intersect(interEnvCollisions, boundsTOPoly);
+    console.log('Intersection Result:', intersectionResult);
+
 
     bBoxGeoJson = {
         "type": "FeatureCollection",
         "features": [interEnvCollisions]
     }
-    // map.addSource('envelopedCollisions', {
-    //     type: "geojson",
-    //     data: bBoxGeoJson
-    // })
-    // map.addLayer({
-    //     id: "collEnv",
-    //     type: "fill",
-    //     source: "envelopedCollisions",
-    //     paint: {
-    //         'fill-color': "grey",
-    //         'fill-opacity': 0.5,
-    //         'fill-outline-color': "black"
-    //     }
-    // });
 
     console.log(bBoxGeoJson)
     console.log(bBoxGeoJson.features[0].geometry.coordinates);
-
-    // console.log(bbox)
-    // console.log(bbox.geometry.coordinates)
 
     let bBoxCoords = [bBoxGeoJson.features[0].geometry.coordinates[0][0],
                 bBoxGeoJson.features[0].geometry.coordinates[0][1],
@@ -125,34 +127,29 @@ map.on('load', function() {
     let bbox = [minLon, minLat, maxLon, maxLat];
 
     //Expand bbox by 10% to fit all points.
-    let scaledBox = turf.bbox(turf.transformScale((turf.bboxPolygon(bbox)), 1.1));
+    let scaledBox = turf.bbox(turf.transformScale((turf.bboxPolygon(bbox)), 1.2));
+    let hexOptions = {
+        units: 'kilometers',
+        mask: boundsTOPoly
+    };
 
-    //Create, Add, and Style the hexgrid. 
-    let hexGrid = turf.hexGrid(scaledBox, 0.5, {units: 'kilometers'});
+    //Create, Add, and Style the hexgrid. NOTE: The mask takes the map way too long to load. I tried various other various like boolean intersect between the city boundaries and HexGrid but could not get any of them to work.
+    let hexGrid = turf.hexGrid(scaledBox, 0.5, hexOptions);
     let collHex = turf.collect(hexGrid, collisions, '_id', 'values');
 
     let maxColl = 0;
-
-    collHex.features.forEach((feature) => {
-        feature.properties.COUNT = feature.properties.values.length
-        if (feature.properties.COUNT > maxColl) {
-            // console.log(feature);
-            maxColl = feature.properties.COUNT
+    collHex.features.forEach((feature) => {//Do the following for every single hexagon.
+        feature.properties.COUNT = feature.properties.values.length//Counting the number of collisions per hexagon.
+        if (feature.properties.COUNT > maxColl) {//Check to see if current hex is larger than maxColl value.
+            maxColl = feature.properties.COUNT//If the count of a hex is larger than the previous maxColl state, overwrite it.
         }
     });
-    console.log(maxColl);
-    
-    //Only have hexagons that are more or less within the city limits of Toronto. Adding a 5% buffer to make sure that all the hexagons inside are there. 
+    console.log(maxColl);//Log the max count (72)
 
-
-    let filterCollHex = {
-        ...collHex,
-        features: collHex.features.filter(feature => feature.properties.COUNT > 0)
-    }
-
+    //Display / Style CollHex
     map.addSource('CollHex', {
         type: 'geojson',
-        data: filterCollHex
+        data: collHex
     });
     map.addLayer({
         id: 'CollHexCloro',
@@ -163,18 +160,25 @@ map.on('load', function() {
                 'interpolate',
                 ['linear'],
                 ['get', 'COUNT'],
-                0, '#ffffcc',
+                0, '#ffffff',
                 1, '#E8F6CB',
                 10, '#D0EDCA',
-                20, '#A0DBC8',
-                30, '#71C9C6',
-                40, '#59C0C5',
-                50, '#41B6C4'
+                25, '#A0DBC8',
+                40, '#71C9C6',
+                55, '#59C0C5',
+                70, '#41B6C4'
             ],
-        'fill-opacity': 0.755 
+        'fill-opacity': 0.5
         }
     });
+
+    document.getElementById('opacity-slider').addEventListener('input', function(e) {
+        let layerOpacity = e.target.value;
+        map.setPaintProperty('CollHexCloro', 'fill-opacity', parseFloat(layerOpacity));
+    });
 });
+
+
 
 // Display the pop-up on hover
 map.on('mousemove', 'CollHexCloro', function(e) {
@@ -200,12 +204,6 @@ map.on('mouseleave', 'CollHexCloro', function() {
     map.getCanvas().style.cursor = '';
     popup.remove();
 });
-
-document.getElementById('opacity-slider').addEventListener('input', function(e) {
-    let layerOpacity = e.target.value;
-    map.setPaintProperty('CollHexCloro', 'fill-opacity', parseFloat(layerOpacity));
-});
-
 
 
 // LAYER BUTTON FUNCTIONALITY - Listens to see if the button is clicked or not, displays or hides the population density layer.
@@ -237,58 +235,3 @@ document.getElementById('tocheck').addEventListener('change', (e) => {
  document.getElementById('returnToToronto').onclick = function() {
     map.flyTo({center: [-79.39, 43.65], zoom: 12});
 };
-
-
-/*--------------------------------------------------------------------
-Step 2: VIEW GEOJSON POINT DATA ON MAP
---------------------------------------------------------------------*/
-//HINT: Create an empty variable
-//      Use the fetch method to access the GeoJSON from your online repository
-//      Convert the response to JSON format and then store the response in your new variable
-
-
-
-/*--------------------------------------------------------------------
-    Step 3: CREATE BOUNDING BOX AND HEXGRID
---------------------------------------------------------------------*/
-//HINT: All code to create and view the hexgrid will go inside a map load event handler
-//      First create a bounding box around the collision point data then store as a feature collection variable
-//      Access and store the bounding box coordinates as an array variable
-//      Use bounding box coordinates as argument in the turf hexgrid function
-
-
-
-/*--------------------------------------------------------------------
-Step 4: AGGREGATE COLLISIONS BY HEXGRID
---------------------------------------------------------------------*/
-//HINT: Use Turf collect function to collect all '_id' properties from the collision points data for each heaxagon
-//      View the collect output in the console. Where there are no intersecting points in polygons, arrays will be empty
-
-
-
-// /*--------------------------------------------------------------------
-// Step 5: FINALIZE YOUR WEB MAP
-// --------------------------------------------------------------------*/
-//HINT: Think about the display of your data and usability of your web map.
-//      Update the addlayer paint properties for your hexgrid using:
-//        - an expression
-//        - The COUNT attribute
-//        - The maximum number of collisions found in a hexagon
-//      Add a legend and additional functionality including pop-up windows
-
-
-/*
-1. Clip hexagons to city of Toronto.            FAST        
-2. Legend.                                      MEDIUM      DONE
-3. Map controls / FS.                           FAST        DONE
-4. Navbar                                       MEDIUM
-    a. FAQ
-    b. Discussion of results
-5. Layer switching                              LONG
-    a. Hexagons                                             DONE
-    b. TO City limits                                       DONE
-    c. Collisions data                                      DONE
-        ?Filter by year? 
-6. Location search bar                          FAST        
-7. Return to full extent button                 FAST        DONE
-*/

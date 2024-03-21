@@ -41,9 +41,8 @@ label {
     position: absolute;
     top: 0px;
     width: 95%;
-    padding-top: 10px;
-    z-index: 9999;
-    
+    padding-top: 20px;
+    /* z-index: 500; */
 }
 
 form {
@@ -75,4 +74,16 @@ form {
     background-color: #f8f9fa;
     height: auto;
     border: 2px solid black;
+}
+
+.opacity-slider-container {
+    user-select: none;
+    position: absolute;
+    top: 280px; 
+    left: 10px;
+    z-index: 1000;
+}
+
+.mapboxgl-ctrl-top-right {
+    top: 60px;
 }
