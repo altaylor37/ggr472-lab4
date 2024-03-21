@@ -20,11 +20,27 @@ const map = new mapboxgl.Map({
 let collisions;
 let bBoxGeoJson;
 let bboxCoords;
+let boundsTO;
+let boundsTOPoly;
 fetch('https://raw.githubusercontent.com/altaylor37/ggr472-lab4/main/data/pedcyc_collision_06-21.geojson')
     .then(response => response.json())
     .then(response => {
         console.log(response);
         collisions = response;
+    });
+
+fetch('https://raw.githubusercontent.com/altaylor37/ggr472-lab4/main/TorontoLineBoundary.geojson')
+    .then(response => response.json())
+    .then(response => {
+        console.log(response);
+        boundsTO = response;
+    });
+
+fetch('https://raw.githubusercontent.com/altaylor37/ggr472-lab4/main/TorontoBoundary.geojson')
+    .then(response => response.json())
+    .then(response => {
+        console.log(response);
+        boundsTOPoly = response;
     });
 
 //Popup functionality initalization
@@ -53,6 +69,19 @@ map.on('load', function() {
         }
     });
 
+    map.addSource('torontoBoundary', {
+        type: 'geojson',
+        data: boundsTO
+    })
+    map.addLayer({
+        id: 'torBounds',
+        type: 'line',
+        source: 'torontoBoundary',
+        paint: {
+            'line-color': 'black',
+            'line-width': 5,
+        }
+    });
 //Envelope & create a bounding box for the collisions point file. Creating, loading, and styling.
     let interEnvCollisions = turf.envelope(collisions);
 
@@ -100,22 +129,7 @@ map.on('load', function() {
 
     //Create, Add, and Style the hexgrid. 
     let hexGrid = turf.hexGrid(scaledBox, 0.5, {units: 'kilometers'});
-    // map.addSource('hexGrid', {
-    //     type: 'geojson',
-    //     data: hexGrid
-    // });
-    // map.addLayer({
-    //     id: 'hexGridLayer',
-    //     type: 'fill',
-    //     source: 'hexGrid',
-    //     paint: {
-    //         'fill-color': '#ffffff',
-    //         'fill-opacity': 0.5
-    //     }
-    // });
-
     let collHex = turf.collect(hexGrid, collisions, '_id', 'values');
-    console.log(collHex);
 
     let maxColl = 0;
 
@@ -127,6 +141,9 @@ map.on('load', function() {
         }
     });
     console.log(maxColl);
+    
+    //Only have hexagons that are more or less within the city limits of Toronto. Adding a 5% buffer to make sure that all the hexagons inside are there. 
+
 
     let filterCollHex = {
         ...collHex,
@@ -208,6 +225,14 @@ document.getElementById('collcheck').addEventListener('change', (e) => {
     );
 });
 
+document.getElementById('tocheck').addEventListener('change', (e) => {
+    map.setLayoutProperty(
+        'torBounds',
+        'visibility',
+        e.target.checked ? 'visible' : 'none'
+    );
+});
+
  // Button to return to Toronto view
  document.getElementById('returnToToronto').onclick = function() {
     map.flyTo({center: [-79.39, 43.65], zoom: 12});
@@ -253,7 +278,7 @@ Step 4: AGGREGATE COLLISIONS BY HEXGRID
 
 
 /*
-1. Clip hexagons to city of Toronto.            FAST
+1. Clip hexagons to city of Toronto.            FAST        
 2. Legend.                                      MEDIUM      DONE
 3. Map controls / FS.                           FAST        DONE
 4. Navbar                                       MEDIUM
@@ -261,7 +286,7 @@ Step 4: AGGREGATE COLLISIONS BY HEXGRID
     b. Discussion of results
 5. Layer switching                              LONG
     a. Hexagons                                             DONE
-    b. TO City limits
+    b. TO City limits                                       DONE
     c. Collisions data                                      DONE
         ?Filter by year? 
 6. Location search bar                          FAST        
