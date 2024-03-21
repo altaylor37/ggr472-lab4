@@ -191,6 +191,28 @@ document.getElementById('opacity-slider').addEventListener('input', function(e) 
 
 
 
+// LAYER BUTTON FUNCTIONALITY - Listens to see if the button is clicked or not, displays or hides the population density layer.
+document.getElementById('hexcheck').addEventListener('change', (e) => {
+    map.setLayoutProperty(
+        'CollHexCloro',
+        'visibility',
+        e.target.checked ? 'visible' : 'none'
+    );
+});
+
+document.getElementById('collcheck').addEventListener('change', (e) => {
+    map.setLayoutProperty(
+        'collPedCyc',
+        'visibility',
+        e.target.checked ? 'visible' : 'none'
+    );
+});
+
+ // Button to return to Toronto view
+ document.getElementById('returnToToronto').onclick = function() {
+    map.flyTo({center: [-79.39, 43.65], zoom: 12});
+};
+
 
 /*--------------------------------------------------------------------
 Step 2: VIEW GEOJSON POINT DATA ON MAP
@@ -232,16 +254,16 @@ Step 4: AGGREGATE COLLISIONS BY HEXGRID
 
 /*
 1. Clip hexagons to city of Toronto.            FAST
-2. Legend.                                      MEDIUM
-3. Map controls / FS.                           FAST
+2. Legend.                                      MEDIUM      DONE
+3. Map controls / FS.                           FAST        DONE
 4. Navbar                                       MEDIUM
     a. FAQ
     b. Discussion of results
 5. Layer switching                              LONG
-    a. Hexagons
+    a. Hexagons                                             DONE
     b. TO City limits
-    c. Collisions data
+    c. Collisions data                                      DONE
         ?Filter by year? 
-6. Location search bar                          FAST
-7. Return to full extent button                 FAST
+6. Location search bar                          FAST        
+7. Return to full extent button                 FAST        DONE
 */

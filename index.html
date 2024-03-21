@@ -24,6 +24,42 @@
     <!-- MAP CONTAINER -->
     <div id='map' class='map'></div>
 
+    <!-- LEGEND -->
+    <div id="legend" class="legend">
+        <h4>Number of Collisions per <br>0.5sqkm hexagon in Toronto</h4>
+        <h8>Total collisions between 2006-2021</h8>
+        <div><span style='background-color: #ffffcc'></span>0</div>
+        <div><span style='background-color: #E8F6CB'></span>1-9</div>
+        <div><span style='background-color: #D0EDCA'></span>10-19</div>
+        <div><span style='background-color: #A0DBC8'></span>20-29</div>
+        <div><span style='background-color: #71C9C6'></span>30-39</div>
+        <div><span style='background-color: #59C0C5'></span>40-49</div>
+        <div><span style='background-color: #41B6C4'></span>50+</div>
+      </div>
+
+      <div class="sidebar">
+        <h3>Pedestrian and Motor Vehicle Accidents <br>in Toronto from 2006-2021</h3>
+        <button id="returnToToronto">Return to Toronto</button>
+    </div>
+
+      <!-- LAYER TOGGLE BUTTONS-->
+      <div class='map-data-container'>
+        <label>Filter map view</label>
+        <div class="form-check">
+            <input class="form-check-input" type="checkbox" value="" id="hexcheck" checked>
+            Show hexagons
+        </div>
+
+        <div class="form-check">
+            <input class="form-check-input" type="checkbox" value="" id="collcheck" checked>
+            Show collisions
+        </div>
+
+        <div class="form-check">
+            <input class="form-check-input" type="checkbox" value="" id="tocheck" checked>
+            Show Toronto city limits
+        </div>
+
     <script src="script.js"></script>
 
 </body>
