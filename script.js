@@ -27,12 +27,15 @@ fetch('https://raw.githubusercontent.com/altaylor37/ggr472-lab4/main/data/pedcyc
         collisions = response;
     });
 
-
-
+//Popup functionality initalization
     let popup = new mapboxgl.Popup({
         closeButton: false,
         closeOnClick: false
     });
+
+//Map controls
+map.addControl(new mapboxgl.FullscreenControl());
+map.addControl(new mapboxgl.NavigationControl());
     
 // Map load event to add collisions layer and style it.
 map.on('load', function() {
@@ -240,4 +243,5 @@ Step 4: AGGREGATE COLLISIONS BY HEXGRID
     c. Collisions data
         ?Filter by year? 
 6. Location search bar                          FAST
+7. Return to full extent button                 FAST
 */
