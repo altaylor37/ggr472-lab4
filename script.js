@@ -125,11 +125,14 @@ map.on('load', function() {
     });
     console.log(maxColl);
 
-
+    let filterCollHex = {
+        ...collHex,
+        features: collHex.features.filter(feature => feature.properties.COUNT > 0)
+    }
 
     map.addSource('CollHex', {
         type: 'geojson',
-        data: collHex
+        data: filterCollHex
     });
     map.addLayer({
         id: 'CollHexCloro',
@@ -141,8 +144,12 @@ map.on('load', function() {
                 ['linear'],
                 ['get', 'COUNT'],
                 0, '#ffffcc',
-                27, '#a1dab4',
-                54, '#41b6c4',
+                1, '#E8F6CB',
+                10, '#D0EDCA',
+                20, '#A0DBC8',
+                30, '#71C9C6',
+                40, '#59C0C5',
+                50, '#41B6C4'
             ],
         'fill-opacity': 0.755 
         }
@@ -220,3 +227,17 @@ Step 4: AGGREGATE COLLISIONS BY HEXGRID
 //      Add a legend and additional functionality including pop-up windows
 
 
+/*
+1. Clip hexagons to city of Toronto.            FAST
+2. Legend.                                      MEDIUM
+3. Map controls / FS.                           FAST
+4. Navbar                                       MEDIUM
+    a. FAQ
+    b. Discussion of results
+5. Layer switching                              LONG
+    a. Hexagons
+    b. TO City limits
+    c. Collisions data
+        ?Filter by year? 
+6. Location search bar                          FAST
+*/
